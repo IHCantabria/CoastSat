@@ -16,6 +16,7 @@ import geopandas as gpd
 from shapely import geometry
 import skimage.transform as transform
 from astropy.convolution import convolve
+import pytz
 
 np.seterr(all='ignore') # raise/ignore divisions by 0 and nans
 
@@ -520,7 +521,9 @@ def get_closest_datapoint(dates, dates_ts, values_ts):
     """
     
     # check if the time-series cover the dates
-    if dates[0] < dates_ts[0] or dates[-1] > dates_ts[-1]: 
+    dates_ts_init = dates_ts[0].replace(tzinfo=pytz.utc)
+    dates_ts_end = dates_ts[-1].replace(tzinfo=pytz.utc)
+    if dates[0] < dates_ts_init or dates[-1] > dates_ts_end: 
         raise Exception('Time-series do not cover the range of your input dates')
     
     # get closest point to each date (no interpolation)
@@ -531,7 +534,7 @@ def get_closest_datapoint(dates, dates_ts, values_ts):
         return start
     for i,date in enumerate(dates):
         print('\rExtracting closest points: %d%%' % int((i+1)*100/len(dates)), end='')
-        temp.append(values_ts[find(min(item for item in dates_ts if item > date), dates_ts)])
+        temp.append(values_ts[find(min(item for item in dates_ts if item.replace(tzinfo=pytz.utc) > date), dates_ts)])
     values = np.array(temp)
     
     return values

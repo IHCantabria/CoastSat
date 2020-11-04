@@ -757,8 +757,6 @@ def show_detection(im_ms, cloud_mask, im_labels, shoreline,image_epsg, georef,
         # else create a new figure
         fig = plt.figure()
         fig.set_size_inches([18, 9])
-        mng = plt.get_current_fig_manager()
-        mng.window.showMaximized()
 
         # according to the image shape, decide whether it is better to have the images
         # in vertical subplots or horizontal subplots
@@ -805,6 +803,7 @@ def show_detection(im_ms, cloud_mask, im_labels, shoreline,image_epsg, georef,
     ax3.plot(sl_pix[:,0], sl_pix[:,1], 'k.', markersize=3)
     ax3.axis('off')
     ax3.set_title(satname, fontweight='bold', fontsize=16)
+    fig.savefig("fig.jpg")
 
     # additional options
     #    ax1.set_anchor('W')

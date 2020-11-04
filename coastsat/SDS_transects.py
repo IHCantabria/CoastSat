@@ -232,7 +232,7 @@ def compute_intersection(output, transects, settings):
     out_dict = dict([])
     out_dict['dates'] = output['dates']
     for key in transects.keys():
-        out_dict['Transect '+ key] = cross_dist[key]
+        out_dict['Transect '+ str(key)] = cross_dist[key]
     df = pd.DataFrame(out_dict)
     fn = os.path.join(settings['inputs']['filepath'],settings['inputs']['sitename'],
                       'transect_time_series.csv')
