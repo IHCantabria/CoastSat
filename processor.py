@@ -188,6 +188,7 @@ def beach_slope(filepath_data, sitename, output, transects):
         SDS_slope.plot_spectrum_all(dates,composite,tsall,settings_slope)
         slope_est[key] = SDS_slope.integrate_power_spectrum(dates,tsall,settings_slope)
         print('Beach slope at transect %s: %.3f'%(key, slope_est[key]))
+    return slope_est
 
 
 
