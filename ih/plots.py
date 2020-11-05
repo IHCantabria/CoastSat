@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 from matplotlib import gridspec
 import os
 import numpy as np
+from coastsat import SDS_slope
 
 
 def plot_shorelines(filepath_data, sitename, output):
@@ -34,7 +35,7 @@ def plot_time_series(filepath_data, sitename, output, cross_distance):
                 va='top', transform=ax.transAxes, fontsize=14)
     fig.savefig(os.path.join(filepath_data, sitename, "times_series.png"))
 
-def plot_time_series_shoreline_change(filepath_data, sitename, cross_distance, output):
+def plot_time_series_shoreline_change(filepath_data, sitename, cross_distance, output, cross_distance_tidally_corrected):
     # plot the time-series of shoreline change (both raw and tidally-corrected)
     fig = plt.figure(figsize=[15,8], tight_layout=True)
     gs = gridspec.GridSpec(len(cross_distance),1)

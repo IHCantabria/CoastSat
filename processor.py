@@ -59,6 +59,14 @@ settings['max_dist_ref'] = 100
 # extract shorelines from all images (also saves output.pkl and shorelines.kml)
 output = SDS_shoreline.extract_shorelines(metadata, settings)
 
+# for GIS applications, save output into a GEOJSON layer
+geomtype = 'lines' # choose 'points' or 'lines' for the layer geometry
+gdf = SDS_tools.output_to_gdf(output, geomtype)
+gdf.crs = {'init':'epsg:'+str(settings['output_epsg'])} # set layer projection
+# save GEOJSON layer to file
+gdf.to_file(os.path.join(filepath_data, sitename, '%s_output_%s.geojson'%(sitename,geomtype)),
+                                driver='GeoJSON', encoding='utf-8')
+
 plots.plot_shorelines(filepath_data, sitename, output)
 
 # if you have already mapped the shorelines, load the output.pkl file
@@ -124,4 +132,4 @@ fn = os.path.join(settings['inputs']['filepath'],settings['inputs']['sitename'],
 df.to_csv(fn, sep=',')
 print('Tidally-corrected time-series of the shoreline change along the transects saved as:\n%s'%fn)
 
-plots.plot_time_series_shoreline_change(filepath_data, sitename, cross_distance, output)
+plots.plot_time_series_shoreline_change(filepath_data, sitename, cross_distance, output, cross_distance_tidally_corrected)

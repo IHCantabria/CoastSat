@@ -574,13 +574,14 @@ def tide_correct(chain,tide_level,beach_slopes):
         tsall.append(ts)
     return tsall
 
-def plot_spectrum_all(filepath_data, sitename, key, dates_rand,composite,tsall,settings, title='plot the spectrum of the tidally-corrected time-series of shoreline change'):
+def plot_spectrum_all(filepath_data, sitename, key, dates_rand,composite,tsall,settings_slope):
+    title='plot the spectrum of the tidally-corrected time-series of shoreline change'
     t = np.array([_.timestamp() for _ in dates_rand]).astype('float64')
     seconds_in_day = 24*3600
     days_in_year = 365.2425
-    time_step = settings['n_days']*seconds_in_day
-    freqs = frequency_grid(t,time_step,settings['n0'])
-    beach_slopes = range_slopes(settings['slope_min'], settings['slope_max'], settings['delta_slope'])
+    time_step = settings_slope['n_days']*seconds_in_day
+    freqs = frequency_grid(t,time_step,settings_slope['n0'])
+    beach_slopes = range_slopes(settings_slope['slope_min'], settings_slope['slope_max'], settings_slope['delta_slope'])
 
     # make figure 1
     fig = plt.figure()
@@ -604,9 +605,9 @@ def plot_spectrum_all(filepath_data, sitename, key, dates_rand,composite,tsall,s
         ps,_,_ = power_spectrum(t,tsall[idx],freqs,[])
         ax.plot(freqs, ps, '-', color=color_list[idx,:], lw=1)
     # draw some references
-    ax.axvline(x=settings['freqs_max'][0], ls='--', c='0.5')
-    ax.axvline(x=settings['freqs_max'][1], ls='--', c='0.5')
-    ax.axvspan(xmin=settings['freqs_max'][0], xmax=settings['freqs_max'][1], color='0.85')
+    ax.axvline(x=settings_slope['freqs_max'][0], ls='--', c='0.5')
+    ax.axvline(x=settings_slope['freqs_max'][1], ls='--', c='0.5')
+    ax.axvspan(xmin=settings_slope['freqs_max'][0], xmax=settings_slope['freqs_max'][1], color='0.85')
     ax.axvline(x=(16*seconds_in_day)**-1, ls='--', c='k')
     fig.savefig(os.path.join(filepath_data, sitename, "power_spectrum_of_tidally_corrected_time_series_{0}.png".format(key)))
 
@@ -615,16 +616,16 @@ def plot_spectrum_all(filepath_data, sitename, key, dates_rand,composite,tsall,s
     fig.set_size_inches([12,5])
     fig.set_tight_layout(True)
     # axis labels
-    xt = 1./(np.flipud(np.arange(settings['n_days']*2,21,1))*24*3600)
-    xl = ['%d d'%(_) for _ in np.flipud(np.arange(settings['n_days']*2,21,1))]
+    xt = 1./(np.flipud(np.arange(settings_slope['n_days']*2,21,1))*24*3600)
+    xl = ['%d d'%(_) for _ in np.flipud(np.arange(settings_slope['n_days']*2,21,1))]
     # loop for plots
     ax = fig.add_subplot(111)
-    ax.axvline(x=settings['freqs_max'][0], ls='--', c='0.5')
-    ax.axvline(x=settings['freqs_max'][1], ls='--', c='0.5')
-    ax.axvspan(xmin=settings['freqs_max'][0], xmax=settings['freqs_max'][1], color='0.85')
+    ax.axvline(x=settings_slope['freqs_max'][0], ls='--', c='0.5')
+    ax.axvline(x=settings_slope['freqs_max'][1], ls='--', c='0.5')
+    ax.axvspan(xmin=settings_slope['freqs_max'][0], xmax=settings_slope['freqs_max'][1], color='0.85')
     ax.grid(which='major', linestyle=':', color='0.5')
     ax.set(xticks=xt, xticklabels=xl, ylabel='amplitude', title='Inset into the tidal peak frequency bands')
-    idx_interval = np.logical_and(freqs >= settings['freqs_max'][0], freqs <= settings['freqs_max'][1])
+    idx_interval = np.logical_and(freqs >= settings_slope['freqs_max'][0], freqs <= settings_slope['freqs_max'][1])
     for i,idx in enumerate(indices):
         # compute spectrum
         ps, _,_ = power_spectrum(t,tsall[idx],freqs,[])
@@ -637,15 +638,15 @@ def plot_spectrum_all(filepath_data, sitename, key, dates_rand,composite,tsall,s
     ax.legend(handles=[nc_line], loc=2)
     fig.savefig(os.path.join(filepath_data, sitename, "non_corrected_time_series_{0}.png".format(key)))
 
-def integrate_power_spectrum(filepath_data, sitename, key, dates_rand,tsall,settings):
+def integrate_power_spectrum(filepath_data, sitename, key, dates_rand,tsall,settings_slope):
     'integrate power spectrum at the frequency band of peak tidal signal'
     t = np.array([_.timestamp() for _ in dates_rand]).astype('float64')
     seconds_in_day = 24*3600
-    time_step = settings['n_days']*seconds_in_day
-    freqs = frequency_grid(t,time_step,settings['n0'])
-    beach_slopes = range_slopes(settings['slope_min'], settings['slope_max'], settings['delta_slope'])
+    time_step = settings_slope['n_days']*seconds_in_day
+    freqs = frequency_grid(t,time_step,settings_slope['n0'])
+    beach_slopes = range_slopes(settings_slope['slope_min'], settings_slope['slope_max'], settings_slope['delta_slope'])
     # integrate power spectrum
-    idx_interval = np.logical_and(freqs >= settings['freqs_max'][0], freqs <= settings['freqs_max'][1])
+    idx_interval = np.logical_and(freqs >= settings_slope['freqs_max'][0], freqs <= settings_slope['freqs_max'][1])
     E = np.zeros(beach_slopes.size)
     for i in range(len(tsall)):
         ps, _, _ = power_spectrum(t,tsall[i],freqs,[])

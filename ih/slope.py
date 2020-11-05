@@ -63,7 +63,7 @@ def beach_slope(filepath_data, sitename, output, transects, dates_sat, tides_sat
     plots.plot_tide_time_series(filepath_data, sitename, dates_sat, tides_sat)
     t = np.array([_.timestamp() for _ in dates_sat]).astype('float64')
     delta_t = np.diff(t)
-    plot_time_step_distribution(filepath_data, sitename, delta_t, seconds_in_day, settings_slope)
+    plots.plot_time_step_distribution(filepath_data, sitename, delta_t, seconds_in_day, settings_slope)
 
     # find tidal peak frequency
     settings_slope['freqs_max'] = SDS_slope.find_tide_peak(dates_sat,tides_sat,settings_slope)
@@ -77,7 +77,7 @@ def beach_slope(filepath_data, sitename, output, transects, dates_sat, tides_sat
         composite = cross_distance[key][~idx_nan]
         # apply tidal correction
         tsall = SDS_slope.tide_correct(composite,tide,beach_slopes)
-        SDS_slope.plot_spectrum_all(dates,composite,tsall,settings_slope)
-        slope_est[key] = SDS_slope.integrate_power_spectrum(dates,tsall,settings_slope)
+        SDS_slope.plot_spectrum_all(filepath_data,sitename,key,dates,composite,tsall,settings_slope)
+        slope_est[key] = SDS_slope.integrate_power_spectrum(filepath_data,sitename,key,dates,tsall,settings_slope)
         print('Beach slope at transect %s: %.3f'%(key, slope_est[key]))
     return slope_est
