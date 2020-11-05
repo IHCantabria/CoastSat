@@ -803,7 +803,6 @@ def show_detection(im_ms, cloud_mask, im_labels, shoreline,image_epsg, georef,
     ax3.plot(sl_pix[:,0], sl_pix[:,1], 'k.', markersize=3)
     ax3.axis('off')
     ax3.set_title(satname, fontweight='bold', fontsize=16)
-    fig.savefig("fig.jpg")
 
     # additional options
     #    ax1.set_anchor('W')

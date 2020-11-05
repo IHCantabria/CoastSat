@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
 import os
+import numpy as np
 
 
 def plot_shorelines(filepath_data, sitename, output):
