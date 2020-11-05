@@ -17,6 +17,8 @@ import scipy.io as sio
 import pandas as pd
 import pytz
 from datetime import datetime
+import csv
+import skimage.transform as transform
 
 def plot_shorelines(filepath_data, sitename, output):
     # plot the mapped shorelines
@@ -193,12 +195,39 @@ def beach_slope(filepath_data, sitename, output, transects):
 
 
 filepath_data = os.path.join(os.getcwd(), 'data')
-sitename='REYA'
+sitename='Valencia'
 metadata=[]
 kml_polygon = os.path.join(filepath_data, sitename, sitename + ".kml")
 polygon = SDS_tools.polygon_from_kml(kml_polygon)
-dates = ['2018-06-01', '2019-03-01']
+dates = ['2019-01-01', '2019-03-01']
 sat_list = ['L8']
+
+pts_sl = np.expand_dims(np.array([np.nan, np.nan]),axis=0)
+with open(os.path.join(filepath_data, sitename, sitename + "_shoreline.csv")) as csv_file:
+    csv_reader = csv.reader(csv_file, delimiter=',')
+    for row in csv_reader:
+        item = np.array([float(row[0]), float(row[1])])
+        pts_sl = np.vstack((pts_sl, item))
+pts_sl = np.delete(pts_sl,0,axis=0)
+
+pts_world_interp = np.expand_dims(np.array([np.nan, np.nan]),axis=0)
+for k in range(len(pts_sl)-1):
+    pt_dist = np.linalg.norm(pts_sl[k,:]-pts_sl[k+1,:])
+    xvals = np.arange(0,pt_dist)
+    yvals = np.zeros(len(xvals))
+    pt_coords = np.zeros((len(xvals),2))
+    pt_coords[:,0] = xvals
+    pt_coords[:,1] = yvals
+    phi = 0
+    deltax = pts_sl[k+1,0] - pts_sl[k,0]
+    deltay = pts_sl[k+1,1] - pts_sl[k,1]
+    phi = np.pi/2 - np.math.atan2(deltax, deltay)
+    tf = transform.EuclideanTransform(rotation=phi, translation=pts_sl[k,:])
+    pts_world_interp = np.append(pts_world_interp,tf(pt_coords), axis=0)
+pts_world_interp = np.delete(pts_world_interp,0,axis=0)
+
+with open(os.path.join(filepath_data, sitename, sitename + '_reference_shoreline.pkl'), 'wb') as f:
+    pickle.dump(pts_world_interp, f)
 
 inputs = {
         'polygon': polygon,
@@ -248,7 +277,7 @@ perf=sio.loadmat(os.path.join(filepath_data, sitename, 'coordinatesPerf.mat'))
 
 # option 3: create the transects by manually providing the coordinates of two points 
 transects = dict([])
-rang=[0,14]
+rang=[0,perf["coordinatesPerf"].shape[0] - 1]
 settings['along_dist'] = 25
 for i in range(rang[0], rang[1]):
     transects[i-rang[0]] = np.array([[perf['coordinatesPerf'][i,0], perf['coordinatesPerf'][i,1]],[perf['coordinatesPerf'][i,2], perf['coordinatesPerf'][i,3]]]) 
@@ -263,7 +292,7 @@ for j in range(len(output['dates'])):
 
 # guardamos    
 for i in range(rang[0],rang[1]):
-    buf = "Reya%d.mat"% (i+1)
+    buf = sitename + "%d.mat"% (i+1)
     buf1='Transect%d'% (i+1)
     buf3='date%d'%(i+1)
     sio.savemat(os.path.join(filepath_data, sitename, buf), {buf1: cross_distance[i-rang[0]], 'data': time})

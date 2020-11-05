@@ -13,6 +13,7 @@ from scipy import signal as ssignal
 from astropy.stats import LombScargle
 import geopandas as gpd
 import pdb
+import os
 
 # plotting params
 plt.style.use('default')
@@ -573,7 +574,7 @@ def tide_correct(chain,tide_level,beach_slopes):
         tsall.append(ts)
     return tsall
 
-def plot_spectrum_all(dates_rand,composite,tsall,settings, title='plot the spectrum of the tidally-corrected time-series of shoreline change'):
+def plot_spectrum_all(filepath_data, sitename, key, dates_rand,composite,tsall,settings, title='plot the spectrum of the tidally-corrected time-series of shoreline change'):
     t = np.array([_.timestamp() for _ in dates_rand]).astype('float64')
     seconds_in_day = 24*3600
     days_in_year = 365.2425
@@ -607,6 +608,7 @@ def plot_spectrum_all(dates_rand,composite,tsall,settings, title='plot the spect
     ax.axvline(x=settings['freqs_max'][1], ls='--', c='0.5')
     ax.axvspan(xmin=settings['freqs_max'][0], xmax=settings['freqs_max'][1], color='0.85')
     ax.axvline(x=(16*seconds_in_day)**-1, ls='--', c='k')
+    fig.savefig(os.path.join(filepath_data, sitename, "power_spectrum_of_tidally_corrected_time_series_{0}.png".format(key)))
 
     # make figure 2
     fig = plt.figure()
@@ -633,8 +635,9 @@ def plot_spectrum_all(dates_rand,composite,tsall,settings, title='plot the spect
     # add legend
     nc_line = lines.Line2D([],[],ls='--', c='b', lw=1.5, label='non-corrected time-series')
     ax.legend(handles=[nc_line], loc=2)
+    fig.savefig(os.path.join(filepath_data, sitename, "non_corrected_time_series_{0}.png".format(key)))
 
-def integrate_power_spectrum(dates_rand,tsall,settings):
+def integrate_power_spectrum(filepath_data, sitename, key, dates_rand,tsall,settings):
     'integrate power spectrum at the frequency band of peak tidal signal'
     t = np.array([_.timestamp() for _ in dates_rand]).astype('float64')
     seconds_in_day = 24*3600
@@ -659,5 +662,5 @@ def integrate_power_spectrum(dates_rand,tsall,settings):
     color_list = cmap(np.linspace(0,1,len(beach_slopes)))
     for i in range(len(beach_slopes)): ax.plot(beach_slopes[i], E[i],'o',ms=8,mec='k',mfc=color_list[i,:])
     ax.plot(beach_slopes[np.argmin(E)],np.min(E),'bo',ms=14,mfc='None',mew=2, label='%.3f'%beach_slopes[np.argmin(E)])
-
+    fig.savefig(os.path.join(filepath_data, sitename, "energy_in_tidal_frequency_band_{0}.png".format(key)))
     return beach_slopes[np.argmin(E)]
