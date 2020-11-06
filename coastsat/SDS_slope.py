@@ -66,10 +66,10 @@ def remove_duplicates(output):
         for key in output.keys():
             output_no_duplicates[key] = [output[key][i] for i in idx_keep]
         print('%d duplicates' % len(idx_remove))
-        return output_no_duplicates
+        return output_no_duplicates, idx_remove
     else:
         print('0 duplicates')
-        return output
+        return output, None
 
 def remove_inaccurate_georef(output, accuracy):
     """
@@ -91,13 +91,15 @@ def remove_inaccurate_georef(output, accuracy):
     """
 
     # find indices of shorelines to be removed
+    idxs_to_remove = np.where(np.logical_or(np.array(output['geoaccuracy']) == -1,
+                                  np.array(output['geoaccuracy']) >= accuracy))[0]
     idx = np.where(~np.logical_or(np.array(output['geoaccuracy']) == -1,
                                   np.array(output['geoaccuracy']) >= accuracy))[0]
     output_filtered = dict([])
     for key in output.keys():
         output_filtered[key] = [output[key][i] for i in idx]
     print('%d bad georef' % (len(output['geoaccuracy']) - len(idx)))
-    return output_filtered
+    return output_filtered, idxs_to_remove
 
 def transects_from_geojson(filename):
     """

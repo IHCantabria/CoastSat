@@ -21,8 +21,8 @@ sitename='Valencia'
 metadata=[]
 kml_polygon = os.path.join(filepath_data, sitename, sitename + ".kml")
 polygon = SDS_tools.polygon_from_kml(kml_polygon)
-dates = ['2019-02-01', '2019-03-01']
-sat_list = ['L8']
+dates = ['2018-06-01', '2019-01-01']
+sat_list = ['L8', 'L7', 'S2']
 
 pts_sl = np.expand_dims(np.array([np.nan, np.nan]),axis=0)
 with open(os.path.join(filepath_data, sitename, sitename + "_shoreline.csv")) as csv_file:

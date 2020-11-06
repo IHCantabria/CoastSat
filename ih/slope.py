@@ -5,16 +5,24 @@ import pytz
 from datetime import datetime
 
 def beach_slope(filepath_data, sitename, output, transects, dates_sat, tides_sat):
-    # remove S2 shorelines (the slope estimation algorithm needs only Landsat)
-    if 'S2' in output['satname']:
-        idx_S2 = np.array([_ == 'S2' for _ in output['satname']])
-        for key in output.keys():
-            output[key] = [output[key][_] for _ in np.where(~idx_S2)[0]]
+    # # remove S2 shorelines (the slope estimation algorithm needs only Landsat)
+    # if 'S2' in output['satname']:
+    #     idx_S2 = np.array([_ == 'S2' for _ in output['satname']])
+    #     for key in output.keys():
+    #         output[key] = [output[key][_] for _ in np.where(~idx_S2)[0]]
+        
 
     # remove duplicates 
-    output = SDS_slope.remove_duplicates(output)
+    output, idxs = SDS_slope.remove_duplicates(output)
+    if idxs is not None:
+        tides_sat_new = np.delete(tides_sat, idxs)
+        tides_sat = tides_sat_new
+
     # remove shorelines from images with poor georeferencing (RMSE > 10 m)
-    output = SDS_slope.remove_inaccurate_georef(output, 10)
+    output, idxs_tides = SDS_slope.remove_inaccurate_georef(output, 10)
+    if idxs_tides is not None:
+        tides_sat_new = np.delete(tides_sat, idxs_tides)
+        tides_sat = tides_sat_new
 
     # plot shorelines and transects
     plots.plot_shorelines_transects(filepath_data, sitename, output, transects)
