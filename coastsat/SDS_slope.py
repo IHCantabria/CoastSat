@@ -66,10 +66,10 @@ def remove_duplicates(output):
         for key in output.keys():
             output_no_duplicates[key] = [output[key][i] for i in idx_keep]
         print('%d duplicates' % len(idx_remove))
-        return output_no_duplicates, idx_remove
+        return output_no_duplicates
     else:
         print('0 duplicates')
-        return output, None
+        return output
 
 def remove_inaccurate_georef(output, accuracy):
     """
@@ -91,15 +91,13 @@ def remove_inaccurate_georef(output, accuracy):
     """
 
     # find indices of shorelines to be removed
-    idxs_to_remove = np.where(np.logical_or(np.array(output['geoaccuracy']) == -1,
-                                  np.array(output['geoaccuracy']) >= accuracy))[0]
     idx = np.where(~np.logical_or(np.array(output['geoaccuracy']) == -1,
                                   np.array(output['geoaccuracy']) >= accuracy))[0]
     output_filtered = dict([])
     for key in output.keys():
         output_filtered[key] = [output[key][i] for i in idx]
     print('%d bad georef' % (len(output['geoaccuracy']) - len(idx)))
-    return output_filtered, idxs_to_remove
+    return output_filtered
 
 def transects_from_geojson(filename):
     """
@@ -414,7 +412,7 @@ def identify_outliers(chainage, dates, cross_change):
     # return the time-series where the outliers have been removed
     return chainage_temp, dates_temp
 
-def plot_cross_distance(dates, cross_distance):
+def plot_cross_distance(filepath_data, sitename, dates, cross_distance):
     'plot the time-series of shoreline change from CoastSat'
 
     for i,key in enumerate(cross_distance.keys()):
@@ -427,6 +425,7 @@ def plot_cross_distance(dates, cross_distance):
         ax.grid(linestyle=':', color='0.5')
         ax.plot(dates_temp, chain - np.mean(chain), '-o', ms=3, mfc='w', mec='C0')
         ax.set(title='Transect %s - %d points'%(key,len(chain)), ylabel='distance [m]', ylim=get_min_max_dict(cross_distance))
+        fig.savefig(os.path.join(filepath_data, sitename, sitename + str(key) + "_cross_distance.png"))
 
 def get_min_max_dict(cross_distance):
     'get min and max of a dictionary of time-series'
