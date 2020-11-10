@@ -7,6 +7,7 @@ import pandas as pd
 import os
 import scipy.io as sio
 import pickle
+import csv
 
 
 def beach_slope(filepath_data, sitename):
@@ -59,6 +60,7 @@ def beach_slope(filepath_data, sitename):
     cross_distance = SDS_slope.compute_intersection(
         output, transects, settings_transects
     )
+
     # remove outliers [advanced version]
     cross_distance = SDS_slope.reject_outliers(
         cross_distance, output, settings_transects
@@ -82,35 +84,22 @@ def beach_slope(filepath_data, sitename):
         "delta_f": 100
         * 1e-10,  # deltaf for buffer around max peak                                           # True to save some plots of the spectrums
     }
-    settings_slope["date_range"] = [
-        pytz.utc.localize(datetime(settings_slope["date_range"][0], 5, 1)),
-        pytz.utc.localize(datetime(settings_slope["date_range"][1], 1, 1)),
-    ]
+
     beach_slopes = SDS_slope.range_slopes(
         settings_slope["slope_min"],
         settings_slope["slope_max"],
         settings_slope["delta_slope"],
     )
 
-    # clip the dates between 1999 and 2020 as we need at least 2 Landsat satellites
-    idx_dates = [
-        np.logical_and(
-            _ > settings_slope["date_range"][0], _ < settings_slope["date_range"][1]
-        )
-        for _ in output["dates"]
-    ]
-    dates_sat = [output["dates"][_] for _ in np.where(idx_dates)[0]]
-
-    for key in cross_distance.keys():
-        cross_distance[key] = cross_distance[key][idx_dates]
-
     filepath = os.path.join(filepath_data, sitename, sitename + "_tides.csv")
     tide_data = pd.read_csv(filepath, parse_dates=["dates"])
     dates_ts = [_.to_pydatetime() for _ in tide_data["dates"]]
     tides_ts = np.array(tide_data["tide"])
 
-    # get tide levels corresponding to the time of image acquisition
     dates_sat = output["dates"]
+
+    # get tide levels corresponding to the time of image acquisition
+
     tides_sat = SDS_tools.get_closest_datapoint(dates_sat, dates_ts, tides_ts)
 
     plots.plot_water_levels(filepath_data, sitename, tide_data, dates_sat, tides_sat)
@@ -124,23 +113,27 @@ def beach_slope(filepath_data, sitename):
 
     # find tidal peak frequency
     settings_slope["freqs_max"] = SDS_slope.find_tide_peak(
-        dates_sat, tides_sat, settings_slope
+        filepath_data, sitename, dates_sat, tides_sat, settings_slope
     )
 
     slope_est = dict([])
-    for key in cross_distance.keys():
-        # remove NaNs
-        idx_nan = np.isnan(cross_distance[key])
-        dates = [dates_sat[_] for _ in np.where(~idx_nan)[0]]
-        tide = tides_sat[~idx_nan]
-        composite = cross_distance[key][~idx_nan]
-        # apply tidal correction
-        tsall = SDS_slope.tide_correct(composite, tide, beach_slopes)
-        SDS_slope.plot_spectrum_all(
-            filepath_data, sitename, key, dates, composite, tsall, settings_slope
-        )
-        slope_est[key] = SDS_slope.integrate_power_spectrum(
-            filepath_data, sitename, key, dates, tsall, settings_slope
-        )
-        print("Beach slope at transect %s: %.3f" % (key, slope_est[key]))
+    with open(os.path.join(filepath_data, sitename, "transects_slope.csv"), mode="w") as csv_file:
+        writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        writer.writerow(['transect', 'slope'])
+        for key in cross_distance.keys():
+            # remove NaNs
+            idx_nan = np.isnan(cross_distance[key])
+            dates = [dates_sat[_] for _ in np.where(~idx_nan)[0]]
+            tide = tides_sat[~idx_nan]
+            composite = cross_distance[key][~idx_nan]
+            # apply tidal correction
+            tsall = SDS_slope.tide_correct(composite, tide, beach_slopes)
+            SDS_slope.plot_spectrum_all(
+                filepath_data, sitename, key, dates, composite, tsall, settings_slope
+            )
+            slope_est[key] = SDS_slope.integrate_power_spectrum(
+                filepath_data, sitename, key, dates, tsall, settings_slope
+            )
+            writer.writerow(['transect' + str(key), slope_est[key]])
+            print("Beach slope at transect %s: %.3f" % (key, slope_est[key]))
     return slope_est, tides_sat, dates_sat, cross_distance, output
