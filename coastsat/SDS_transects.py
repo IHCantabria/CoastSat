@@ -231,6 +231,8 @@ def compute_intersection(output, transects, settings):
     # save a .csv file for Excel users
     out_dict = dict([])
     out_dict['dates'] = output['dates']
+    out_dict["geoaccuracy"] = output["geoaccuracy"]
+    out_dict["satname"] = output["satname"] 
     for key in transects.keys():
         out_dict['Transect '+ str(key)] = cross_dist[key]
     df = pd.DataFrame(out_dict)

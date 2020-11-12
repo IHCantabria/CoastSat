@@ -30,7 +30,7 @@ metadata = []
 kml_polygon = os.path.join(filepath_data, sitename, sitename + ".kml")
 polygon = SDS_tools.polygon_from_kml(kml_polygon)
 dates = ["2020-01-01", "2020-03-01"]
-sat_list = ["L8", "L7", "S2", "L5"]
+sat_list = ["L7", "L8", "S2"]
 
 pts_sl = np.expand_dims(np.array([np.nan, np.nan]), axis=0)
 with open(
@@ -140,6 +140,8 @@ for key in cross_distance.keys():
 # store the tidally-corrected time-series in a .csv file
 out_dict = dict([])
 out_dict["dates"] = dates_sat
+out_dict["geoaccuracy"] = output["geoaccuracy"]
+out_dict["satname"] = output["satname"]
 for key in cross_distance_tidally_corrected.keys():
     out_dict["Transect " + str(key)] = cross_distance_tidally_corrected[key]
 df = pd.DataFrame(out_dict)

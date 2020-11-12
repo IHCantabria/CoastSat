@@ -117,9 +117,13 @@ def beach_slope(filepath_data, sitename):
     )
 
     slope_est = dict([])
-    with open(os.path.join(filepath_data, sitename, "transects_slope.csv"), mode="w") as csv_file:
-        writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        writer.writerow(['transect', 'slope'])
+    with open(
+        os.path.join(filepath_data, sitename, "transects_slope.csv"), mode="w"
+    ) as csv_file:
+        writer = csv.writer(
+            csv_file, delimiter=",", quotechar='"', quoting=csv.QUOTE_MINIMAL
+        )
+        writer.writerow(["transect", "slope"])
         for key in cross_distance.keys():
             # remove NaNs
             idx_nan = np.isnan(cross_distance[key])
@@ -134,6 +138,6 @@ def beach_slope(filepath_data, sitename):
             slope_est[key] = SDS_slope.integrate_power_spectrum(
                 filepath_data, sitename, key, dates, tsall, settings_slope
             )
-            writer.writerow(['transect' + str(key), slope_est[key]])
+            writer.writerow(["transect" + str(key), slope_est[key]])
             print("Beach slope at transect %s: %.3f" % (key, slope_est[key]))
     return slope_est, tides_sat, dates_sat, cross_distance, output
