@@ -1,6 +1,6 @@
 import numpy as np
 from coastsat import SDS_slope, SDS_tools
-from ih import plots, utils
+from ih import plots
 import pytz
 from datetime import datetime
 import pandas as pd
@@ -8,7 +8,6 @@ import os
 import scipy.io as sio
 import pickle
 import csv
-import shapefile
 
 
 def beach_slope(filepath_data, sitename):
@@ -18,12 +17,8 @@ def beach_slope(filepath_data, sitename):
     ) as f:
         output = pickle.load(f)
 
-    sf = shapefile.Reader(os.path.join(filepath_data, sitename, sitename + ".shp"))
-    shapes = sf.shapes()
-    transects = dict([])
-
-    for p in range (len(shapes)):
-        transects[str(p)] = np.array(shapes[p].points)
+    geojson_file = os.path.join(filepath_data, sitename, sitename + '_transects.geojson')
+    transects = SDS_slope.transects_from_geojson(geojson_file)
 
     # remove S2 shorelines (the slope estimation algorithm needs only Landsat)
     if "S2" in output["satname"]:
@@ -66,77 +61,23 @@ def beach_slope(filepath_data, sitename):
         filepath_data, sitename, output["dates"], cross_distance
     )
 
-    cross_distance_f = (
-        cross_distance  # cross_distance_f es la variable cross_distance filtrada
-    )
-
-    import calendar
-
-    def getUnixTimestamp(humanTime, dateFormat="%d-%m-%Y %H:%M:%S"):
-        # unixstart = getUnixTimestamp(startdate,"%m/%d/%Y %H:%M")
-        unixTimestamp = int(
-            calendar.timegm(datetime.strptime(humanTime, dateFormat).timetuple())
-        )
-        return unixTimestamp / (3600 * 24) + 719529
-
-    fechas_costa = output["dates"]
-    fechas = np.zeros(len(fechas_costa))
-
-    for fe in range(len(fechas_costa)):
-        label = fechas_costa[fe].strftime("%d-%m-%Y %H:%M:%S")
-        fechas[fe] = getUnixTimestamp(label, dateFormat="%d-%m-%Y %H:%M:%S")
-
-    for key in cross_distance_f.keys():
-
-        window = 5 * 365
-        breaks = 0
-        yl, yc = utils.disLongCrossRunMean(
-            fechas, cross_distance_f[key], window, breaks
-        )
-
-        filtro = [
-            np.nanmean(yc) - 1.5 * np.nanstd(yc),
-            np.nanmean(yc) + 1.5 * np.nanstd(yc),
-        ]
-        pos = np.argwhere((yc <= filtro[0]) | (yc >= filtro[1]))
-        cross_distance_f[key][pos] = np.nan
-
-    # guardo los nuevos cortes de los transectos con las líneas de costa en un excel nuevo
-    # save a .csv file for Excel users
-
-    cross_distance = cross_distance_f
-    out_dict = dict([])
-    out_dict["dates"] = output["dates"]
-    out_dict["geoaccuracy"] = output["geoaccuracy"]
-    out_dict["satname"] = output["satname"]
-    for key in transects.keys():
-        out_dict["Transect " + str(key)] = cross_distance_f[key]
-        df = pd.DataFrame(out_dict)
-        fn = os.path.join(filepath_data, sitename, "transect_time_series_filtered.csv")
-        df.to_csv(fn, sep=",")
-        print(
-            "Time-series of the shoreline change along the transects saved as:\n%s" % fn
-        )
-
     # slope estimation settings
     days_in_year = 365.2425
     seconds_in_day = 24 * 3600
     settings_slope = {
-        "slope_min": 0.035,
+        "slope_min": 0.01,
         "slope_max": 0.2,
         "delta_slope": 0.005,
-        "date_range": [1950, 2050],  # range of dates over which to perform the analysis
-        "n_days": 7,  # sampling period [days]
+        "date_range": [1999, 2020],  # range of dates over which to perform the analysis
+        "n_days": 8,  # sampling period [days]
         "n0": 50,  # for Nyquist criterium
         "freqs_cutoff": 1.0 / (seconds_in_day * 30),  # 1 month frequency
         "delta_f": 100
         * 1e-10,  # deltaf for buffer around max peak                                           # True to save some plots of the spectrums
     }
 
-    settings_slope["date_range"] = [
-        pytz.utc.localize(datetime(settings_slope["date_range"][0], 5, 1)),
-        pytz.utc.localize(datetime(settings_slope["date_range"][1], 1, 1)),
-    ]
+    settings_slope['date_range'] = [pytz.utc.localize(datetime(settings_slope['date_range'][0],5,1)),
+                                pytz.utc.localize(datetime(settings_slope['date_range'][1],1,1))]
 
     beach_slopes = SDS_slope.range_slopes(
         settings_slope["slope_min"],
@@ -144,26 +85,14 @@ def beach_slope(filepath_data, sitename):
         settings_slope["delta_slope"],
     )
 
-    idx_dates = [
-        np.logical_and(
-            _ > settings_slope["date_range"][0], _ < settings_slope["date_range"][1]
-        )
-        for _ in output["dates"]
-    ]
-    dates_sat = [output["dates"][_] for _ in np.where(idx_dates)[0]]
+    idx_dates = [np.logical_and(_>settings_slope['date_range'][0],_<settings_slope['date_range'][1]) for _ in output['dates']]
+    dates_sat = [output['dates'][_] for _ in np.where(idx_dates)[0]]
     for key in cross_distance.keys():
         cross_distance[key] = cross_distance[key][idx_dates]
 
-    filepath = os.path.join(filepath_data, sitename, sitename + "_tides.csv")
-    tide_data = pd.read_csv(filepath, parse_dates=["dates"])
-    dates_ts = [_.to_pydatetime() for _ in tide_data["dates"]]
-    tides_ts = np.array(tide_data["tide"])
-
-    dates_sat = output["dates"]
-
-    # get tide levels corresponding to the time of image acquisition
-
-    tides_sat = SDS_tools.get_closest_datapoint(dates_sat, dates_ts, tides_ts)
+    with open(os.path.join(filepath_data, sitename, sitename + '_tide' + '.pkl'), 'rb') as f:
+        tide_data = pickle.load(f) 
+    tides_sat = tide_data['tide']
 
     plots.plot_water_levels(filepath_data, sitename, tide_data, dates_sat, tides_sat)
 
