@@ -17,6 +17,11 @@ def beach_slope(filepath_data, sitename):
     ) as f:
         output = pickle.load(f)
 
+    with open(
+        os.path.join(filepath_data, sitename, sitename + "_output_kvos" + ".pkl"), "rb"
+    ) as f:
+        output_kvos = pickle.load(f)
+
     geojson_file = os.path.join(filepath_data, sitename, sitename + '_transects.geojson')
     transects = SDS_slope.transects_from_geojson(geojson_file)
 
@@ -68,7 +73,7 @@ def beach_slope(filepath_data, sitename):
         "slope_min": 0.01,
         "slope_max": 0.2,
         "delta_slope": 0.005,
-        "date_range": [1999, 2020],  # range of dates over which to perform the analysis
+        "date_range": [1999, 2019],  # range of dates over which to perform the analysis
         "n_days": 8,  # sampling period [days]
         "n0": 50,  # for Nyquist criterium
         "freqs_cutoff": 1.0 / (seconds_in_day * 30),  # 1 month frequency

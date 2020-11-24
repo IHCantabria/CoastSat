@@ -25,20 +25,15 @@ from coastsat import (
 import scipy.io as sio
 import pandas as pd
 import csv
-from ih import plots, slope, utils
+from ih import plots, slopealt, utilsalt
 
 parser = argparse.ArgumentParser()
 
 parser.add_argument(
-        "-S", "--site",
-        help="Sitename (string)",
-        default="default",
-)
-
-parser.add_argument(
-        "-s", "--start",
-        help="Start date (yyyy-mm-dd) (string)",
-        default="default",
+    "-S",
+    "--site",
+    help="Sitename (string)",
+    default="default",
 )
 
 parser.add_argument(
@@ -48,9 +43,17 @@ parser.add_argument(
 )
 
 parser.add_argument(
-        "-e", "--end",
-        help="End date (yyyy-mm-dd) (string)",
-        default="default",
+    "-s",
+    "--start",
+    help="Start date (yyyy-mm-dd) (string)",
+    default="default",
+)
+
+parser.add_argument(
+    "-e",
+    "--end",
+    help="End date (yyyy-mm-dd) (string)",
+    default="default",
 )
 
 o = parser.parse_args(sys.argv[1:])
@@ -58,7 +61,7 @@ o = parser.parse_args(sys.argv[1:])
 slope_value = None
 
 if o.slope != "default":
-    slope_value = float(o.slope)
+    slope_value = o.slope
 
 if o.site != "default" and o.start != "default" and o.end != "default":
     filepath_data = os.path.join(os.getcwd(), "data")
@@ -66,26 +69,8 @@ if o.site != "default" and o.start != "default" and o.end != "default":
     metadata = []
     kml_polygon = os.path.join(filepath_data, sitename, sitename + ".kml")
     polygon = SDS_tools.polygon_from_kml(kml_polygon)
-
     dates = [o.start, o.end]
-    sat_list = ["L5", "L7", "L8", "S2"]
-
-    pts_sl = np.expand_dims(np.array([np.nan, np.nan]), axis=0)
-    with open(
-        os.path.join(filepath_data, sitename, sitename + "_shoreline.csv")
-    ) as csv_file:
-        csv_reader = csv.reader(csv_file, delimiter=",")
-        for row in csv_reader:
-            item = np.array([float(row[0]), float(row[1])])
-            pts_sl = np.vstack((pts_sl, item))
-    pts_sl = np.delete(pts_sl, 0, axis=0)
-
-    pts_world_interp = utils.get_interpolate_points(pts_sl)
-
-    with open(
-        os.path.join(filepath_data, sitename, sitename + "_reference_shoreline.pkl"), "wb"
-    ) as f:
-        pickle.dump(pts_world_interp, f)
+    sat_list = ["S2"]
 
     inputs = {
         "polygon": polygon,
@@ -98,11 +83,13 @@ if o.site != "default" and o.start != "default" and o.end != "default":
     metadata = SDS_download.retrieve_images(inputs)
 
     # settings for the shoreline extraction
-    settings = utils.settings_for_shoreline_extraction(inputs)
+    settings = utilsalt.settings_for_shoreline_extraction(inputs)
 
     SDS_preprocess.save_jpg(metadata, settings)
     # [OPTIONAL] create a reference shoreline (helps to identify outliers and false detections)
-    settings["reference_shoreline"] = SDS_preprocess.get_reference_sl(metadata, settings)
+    settings["reference_shoreline"] = SDS_preprocess.get_reference_sl(
+        metadata, settings
+    )
     # set the max distance (in meters) allowed from the reference shoreline for a detected shoreline to be valid
     settings["max_dist_ref"] = 100
 
@@ -126,33 +113,16 @@ if o.site != "default" and o.start != "default" and o.end != "default":
 
     plots.plot_shorelines(filepath_data, sitename, output)
 
+    geojson_file = os.path.join(filepath_data, sitename, sitename + '_transects.geojson')
+    transects = SDS_slope.transects_from_geojson(geojson_file)
+
+    settings["along_dist"] = 25
+    cross_distance = SDS_transects.compute_intersection(output, transects, settings)
+
     # if you have already mapped the shorelines, load the output.pkl file
     filepath = os.path.join(inputs["filepath"], sitename)
     with open(os.path.join(filepath, sitename + "_output" + ".pkl"), "rb") as f:
         output = pickle.load(f)
-
-
-    sf = shapefile.Reader(os.path.join(filepath_data, sitename, "Perfiles.shp"))
-    shapes = sf.shapes()
-    transects = dict([])
-
-    for p in range (len(shapes)):
-        transects[str(p)] = np.array(shapes[p].points)
-    # perf = sio.loadmat(os.path.join(filepath_data, sitename, "coordinatesPERF.mat"))
-
-    # # option 3: create the transects by manually providing the coordinates of two points
-    # transects = dict([])
-    # rang = [0, perf["coordinatesPerf"].shape[0]]
-    # settings["along_dist"] = 25
-    # for i in range(rang[0], rang[1]):
-    #     transects[i - rang[0]] = np.array(
-    #         [
-    #             [perf["coordinatesPerf"][i, 0], perf["coordinatesPerf"][i, 1]],
-    #             [perf["coordinatesPerf"][i, 2], perf["coordinatesPerf"][i, 3]],
-    #         ]
-    #     )
-    settings["along_dist"] = 25
-    cross_distance = SDS_transects.compute_intersection(output, transects, settings)
 
     # pasamos las fechas a un vector con año, mes, dia, hora, minuto y segundo
     time = np.zeros((len(output["dates"]), 6))
@@ -182,7 +152,6 @@ if o.site != "default" and o.start != "default" and o.end != "default":
             filepath_data, sitename
         )
     else:
-        plots.plot_shorelines_transects(filepath_data, sitename, output, transects)
         slope_est = dict([])
         filepath = os.path.join(filepath_data, sitename, sitename + "_tides.csv")
         tide_data = pd.read_csv(filepath, parse_dates=["dates"])
@@ -193,9 +162,10 @@ if o.site != "default" and o.start != "default" and o.end != "default":
         for key in cross_distance.keys():
             slope_est[key] = slope_value
 
+
     cross_distance_tidally_corrected = {}
     for key in cross_distance.keys():
-        correction = (tides_sat - reference_elevation) / slope_est[key]
+        correction = (tides_sat - reference_elevation) / float(slope_est[key])
         cross_distance_tidally_corrected[key] = cross_distance[key] + correction
 
     # store the tidally-corrected time-series in a .csv file
@@ -218,7 +188,13 @@ if o.site != "default" and o.start != "default" and o.end != "default":
     )
 
     plots.plot_time_series_shoreline_change(
-        filepath_data, sitename, cross_distance, output, cross_distance_tidally_corrected
+        filepath_data,
+        sitename,
+        cross_distance,
+        output,
+        cross_distance_tidally_corrected,
     )
 else:
-    print("Arguments site, start date and end date are mandatory, use python processor.py -h to get help")
+    print(
+        "Arguments site, start date and end date are mandatory, use python processor.py -h to get help"
+    )

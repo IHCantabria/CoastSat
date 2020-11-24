@@ -10,15 +10,14 @@ import pickle
 import csv
 import shapefile
 
-
-def beach_slope(filepath_data, sitename):
+def beach_slope(filepath_data, sitename, slope=None):
 
     with open(
         os.path.join(filepath_data, sitename, sitename + "_output" + ".pkl"), "rb"
     ) as f:
         output = pickle.load(f)
 
-    sf = shapefile.Reader(os.path.join(filepath_data, sitename, sitename + ".shp"))
+    sf = shapefile.Reader(os.path.join(filepath_data, sitename, "Perfiles.shp"))
     shapes = sf.shapes()
     transects = dict([])
 
@@ -100,11 +99,11 @@ def beach_slope(filepath_data, sitename):
         ]
         pos = np.argwhere((yc <= filtro[0]) | (yc >= filtro[1]))
         cross_distance_f[key][pos] = np.nan
+        plots.plot_shorelines_removed(filepath_data, sitename, output, pos, key )
 
     # guardo los nuevos cortes de los transectos con las líneas de costa en un excel nuevo
     # save a .csv file for Excel users
 
-    cross_distance = cross_distance_f
     out_dict = dict([])
     out_dict["dates"] = output["dates"]
     out_dict["geoaccuracy"] = output["geoaccuracy"]
@@ -151,8 +150,8 @@ def beach_slope(filepath_data, sitename):
         for _ in output["dates"]
     ]
     dates_sat = [output["dates"][_] for _ in np.where(idx_dates)[0]]
-    for key in cross_distance.keys():
-        cross_distance[key] = cross_distance[key][idx_dates]
+    for key in cross_distance_f.keys():
+        cross_distance_f[key] = cross_distance_f[key][idx_dates]
 
     filepath = os.path.join(filepath_data, sitename, sitename + "_tides.csv")
     tide_data = pd.read_csv(filepath, parse_dates=["dates"])
@@ -187,12 +186,12 @@ def beach_slope(filepath_data, sitename):
             csv_file, delimiter=",", quotechar='"', quoting=csv.QUOTE_MINIMAL
         )
         writer.writerow(["transect", "slope"])
-        for key in cross_distance.keys():
+        for key in cross_distance_f.keys():
             # remove NaNs
-            idx_nan = np.isnan(cross_distance[key])
+            idx_nan = np.isnan(cross_distance_f[key])
             dates = [dates_sat[_] for _ in np.where(~idx_nan)[0]]
             tide = tides_sat[~idx_nan]
-            composite = cross_distance[key][~idx_nan]
+            composite = cross_distance_f[key][~idx_nan]
             # apply tidal correction
             tsall = SDS_slope.tide_correct(composite, tide, beach_slopes)
             SDS_slope.plot_spectrum_all(
@@ -203,4 +202,4 @@ def beach_slope(filepath_data, sitename):
             )
             writer.writerow(["transect" + str(key), slope_est[key]])
             print("Beach slope at transect %s: %.3f" % (key, slope_est[key]))
-    return slope_est, tides_sat, dates_sat, cross_distance, output
+    return slope_est, tides_sat, dates_sat, cross_distance_f, output

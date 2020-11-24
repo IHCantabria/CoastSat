@@ -19,6 +19,20 @@ def plot_shorelines(filepath_data, sitename, output):
     plt.legend()
     fig.savefig(os.path.join(filepath_data, sitename, "shorelines.png"))
 
+def plot_shorelines_removed(filepath_data, sitename, output, indexes, transect):
+    # plot the mapped shorelines
+    fig = plt.figure(figsize=[15, 8], tight_layout=True)
+    plt.axis("equal")
+    plt.xlabel("Eastings")
+    plt.ylabel("Northings")
+    plt.grid(linestyle=":", color="0.5")
+    for i in range(len(indexes)):
+        sl = output["shorelines"][indexes[i][0]]
+        date = output["dates"][indexes[i][0]]
+        plt.plot(sl[:, 0], sl[:, 1], ".", label=date.strftime("%d-%m-%Y"))
+    plt.legend()
+    fig.savefig(os.path.join(filepath_data, sitename, "removed_shorelines_{0}.png".format(transect)))
+
 
 def plot_time_series(filepath_data, sitename, output, cross_distance):
     fig = plt.figure(figsize=[15, 8], tight_layout=True)

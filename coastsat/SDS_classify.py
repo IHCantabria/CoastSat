@@ -404,6 +404,7 @@ def load_labels(train_sites, settings):
 
 def format_training_data(features, classes, labels):
     """
+    
     Format the labelled data in an X features matrix and a y labels vector, so
     that it can be used for training an ML model.
 
