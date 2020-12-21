@@ -21,7 +21,7 @@ cligj==0.7.0
 cloudpickle==1.6.0
 cryptography==3.2
 cycler==0.10.0
-dataclasses==0.7
+dataclasses==0.6
 decorator==4.4.2
 defusedxml==0.6.0
 diff-match-patch==20200713
@@ -87,7 +87,6 @@ pathtools==0.1.2
 pexpect==4.8.0
 pickleshare==0.7.5
 Pillow==6.2.1
-pkg-resources==0.0.0
 pluggy==0.13.1
 prometheus-client==0.8.0
 prompt-toolkit==3.0.8
@@ -108,6 +107,7 @@ PyQt5==5.12.3
 PyQt5-sip==12.8.1
 PyQtWebEngine==5.12.1
 pyrsistent==0.17.3
+pyshp==2.1.2
 python-dateutil==2.8.1
 python-jsonrpc-server==0.4.0
 python-language-server==0.35.1

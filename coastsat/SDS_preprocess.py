@@ -637,20 +637,21 @@ def save_jpg(metadata, settings, **kwargs):
 
         # loop through images
         for i in range(len(filenames)):
-            # image filename
-            fn = SDS_tools.get_filenames(filenames[i],filepath, satname)
-            # read and preprocess image
-            im_ms, georef, cloud_mask, im_extra, im_QA, im_nodata = preprocess_single(fn, satname, settings['cloud_mask_issue'])
-            # calculate cloud cover
-            cloud_cover = np.divide(sum(sum(cloud_mask.astype(int))),
-                                    (cloud_mask.shape[0]*cloud_mask.shape[1]))
-            # skip image if cloud cover is above threshold
-            if cloud_cover > cloud_thresh or cloud_cover == 1:
-                continue
-            # save .jpg with date and satellite in the title
-            date = filenames[i][:19]
-            plt.ioff()  # turning interactive plotting off
-            create_jpg(im_ms, cloud_mask, date, satname, filepath_jpg)
+            if os.path.exists(filenames[i]):
+                # image filename
+                fn = SDS_tools.get_filenames(filenames[i],filepath, satname)
+                # read and preprocess image
+                im_ms, georef, cloud_mask, im_extra, im_QA, im_nodata = preprocess_single(fn, satname, settings['cloud_mask_issue'])
+                # calculate cloud cover
+                cloud_cover = np.divide(sum(sum(cloud_mask.astype(int))),
+                                        (cloud_mask.shape[0]*cloud_mask.shape[1]))
+                # skip image if cloud cover is above threshold
+                if cloud_cover > cloud_thresh or cloud_cover == 1:
+                    continue
+                # save .jpg with date and satellite in the title
+                date = filenames[i][:19]
+                plt.ioff()  # turning interactive plotting off
+                create_jpg(im_ms, cloud_mask, date, satname, filepath_jpg)
 
     # print the location where the images have been saved
     print('Satellite images saved as .jpg in ' + os.path.join(filepath_data, sitename,

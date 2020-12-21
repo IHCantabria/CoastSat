@@ -10,7 +10,7 @@
             "type": "python",
             "request": "launch",
             "program": "${file}",
-            "args": ["--site", "Valencia", "--start", "2017-01-01", "--end", "2017-03-01"],
+            "args": ["--site", "Dakar1"],
             "console": "integratedTerminal"
         }
     ]

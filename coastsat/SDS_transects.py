@@ -62,9 +62,7 @@ def create_transect(origin, orientation, length):
 def draw_transects(output, settings):
     """
     Draw shore-normal transects interactively on top of the mapped shorelines
-
     KV WRL 2018       
-
     Arguments:
     -----------
     output: dict
@@ -162,7 +160,6 @@ def compute_intersection(output, transects, settings):
     transects. It returns time-series of cross-shore distance along each transect.
     
     KV WRL 2018       
-
     Arguments:
     -----------
     output: dict

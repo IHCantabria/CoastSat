@@ -30,7 +30,6 @@ def convert_pix2world(points, georef):
     coordinates performing an affine transformation.
     
     KV WRL 2018
-
     Arguments:
     -----------
     points: np.array or list of np.array
@@ -76,7 +75,6 @@ def convert_world2pix(points, georef):
     (pixel row and column) performing an affine transformation.
     
     KV WRL 2018
-
     Arguments:
     -----------
     points: np.array or list of np.array
@@ -121,7 +119,6 @@ def convert_epsg(points, epsg_in, epsg_out):
     Converts from one spatial reference to another using the epsg codes
     
     KV WRL 2018
-
     Arguments:
     -----------
     points: np.array or list of np.ndarray
@@ -166,9 +163,7 @@ def convert_epsg(points, epsg_in, epsg_out):
 def nd_index(im1, im2, cloud_mask):
     """
     Computes normalised difference index on 2 images (2D), given a cloud mask (2D).
-
     KV WRL 2018
-
     Arguments:
     -----------
     im1: np.array
@@ -177,7 +172,6 @@ def nd_index(im1, im2, cloud_mask):
         second image (2D) with which to calculate the ND index
     cloud_mask: np.array
         2D cloud mask with True where cloud pixels are
-
     Returns:    
     -----------
     im_nd: np.array
@@ -279,7 +273,6 @@ def get_filepath(inputs,satname):
     Create filepath to the different folders containing the satellite images.
     
     KV WRL 2018
-
     Arguments:
     -----------
     inputs: dict with the following keys
@@ -346,7 +339,6 @@ def get_filenames(filename, filepath, satname):
     Creates filepath + filename for all the bands belonging to the same image.
     
     KV WRL 2018
-
     Arguments:
     -----------
     filename: str
@@ -422,17 +414,14 @@ def remove_duplicates(output):
     Function to remove from the output dictionnary entries containing shorelines for 
     the same date and satellite mission. This happens when there is an overlap between 
     adjacent satellite images.
-
     Arguments:
     -----------
         output: dict
             contains output dict with shoreline and metadata
-
     Returns:
     -----------
         output_no_duplicates: dict
             contains the updated dict where duplicates have been removed
-
     """
 
     # nested function
@@ -470,19 +459,16 @@ def remove_inaccurate_georef(output, accuracy):
     that were mapped on images with inaccurate georeferencing:
         - RMSE > accuracy for Landsat images
         - failed geometric test for Sentinel images (flagged with -1)
-
     Arguments:
     -----------
         output: dict
             contains the extracted shorelines and corresponding metadata
         accuracy: int
             minimum horizontal georeferencing accuracy (metres) for a shoreline to be accepted
-
     Returns:
     -----------
         output_filtered: dict
             contains the updated dictionnary
-
     """
 
     # find indices of shorelines to be removed
@@ -503,7 +489,6 @@ def get_closest_datapoint(dates, dates_ts, values_ts):
     Make sure that dates and dates_ts are in the same timezone (also aware or naive)
     
     KV WRL 2020
-
     Arguments:
     -----------
     dates: list of datetimes
@@ -548,7 +533,6 @@ def polygon_from_kml(fn):
     Extracts coordinates from a .kml file.
     
     KV WRL 2018
-
     Arguments:
     -----------
     fn: str
@@ -606,7 +590,6 @@ def output_to_gdf(output, geomtype):
     Saves the mapped shorelines as a gpd.GeoDataFrame    
     
     KV WRL 2018
-
     Arguments:
     -----------
     output: dict
@@ -657,7 +640,6 @@ def transects_to_gdf(transects):
     Saves the shore-normal transects as a gpd.GeoDataFrame    
     
     KV WRL 2018
-
     Arguments:
     -----------
     transects: dict
@@ -666,7 +648,6 @@ def transects_to_gdf(transects):
     Returns:    
     -----------
     gdf_all: gpd.GeoDataFrame
-
         
     """  
        
@@ -690,7 +671,6 @@ def get_image_bounds(fn):
     Returns a polygon with the bounds of the image in the .tif file
      
     KV WRL 2020
-
     Arguments:
     -----------
     fn: str
@@ -733,7 +713,6 @@ def smallest_rectangle(polygon):
     to coordinate axes.
      
     KV WRL 2020
-
     Arguments:
     -----------
     polygon: list of coordinates 
