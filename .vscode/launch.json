@@ -10,7 +10,7 @@
             "type": "python",
             "request": "launch",
             "program": "${file}",
-            "args": ["--site", "EH_1", "--start", "2020-01-01", "--end", "2020-01-15", "--mode", "1"],
+            "args": ["--site", "LP_1", "--start", "2020-01-01", "--end", "2020-03-01", "--mode", "2"],
             "console": "integratedTerminal"
         }
     ]

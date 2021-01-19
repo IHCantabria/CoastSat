@@ -30,33 +30,37 @@ from ih import plots, slope, utils
 parser = argparse.ArgumentParser()
 
 parser.add_argument(
-        "-S", "--site",
-        help="Sitename (string)",
-        default="default",
+    "-S",
+    "--site",
+    help="Sitename (string)",
+    default="default",
 )
 
 parser.add_argument(
-        "-s", "--start",
-        help="Start date (yyyy-mm-dd) (string)",
-        default="default",
+    "-s",
+    "--start",
+    help="Start date (yyyy-mm-dd) (string)",
+    default="default",
 )
 
 parser.add_argument(
-        "-m", "--mode",
-        help="1-Coast Detection, 2-Slope, 3-Full",
-        default=1,
+    "-e",
+    "--end",
+    help="End date (yyyy-mm-dd) (string)",
+    default="default",
+)
+
+parser.add_argument(
+    "-m",
+    "--mode",
+    help="1-Coast Detection, 2-Slope, 3-Full (integer)",
+    default=1,
 )
 
 parser.add_argument(
     "--slope",
     help="Default slope value (double)",
     default="default",
-)
-
-parser.add_argument(
-        "-e", "--end",
-        help="End date (yyyy-mm-dd) (string)",
-        default="default",
 )
 
 o = parser.parse_args(sys.argv[1:])
@@ -89,7 +93,8 @@ if o.site != "default" and o.start != "default" and o.end != "default":
     pts_world_interp = utils.get_interpolate_points(pts_sl)
 
     with open(
-        os.path.join(filepath_data, sitename, sitename + "_reference_shoreline.pkl"), "wb"
+        os.path.join(filepath_data, sitename, sitename + "_reference_shoreline.pkl"),
+        "wb",
     ) as f:
         pickle.dump(pts_world_interp, f)
 
@@ -103,26 +108,32 @@ if o.site != "default" and o.start != "default" and o.end != "default":
 
     settings = utils.settings_for_shoreline_extraction(inputs)
 
-    if int(o.mode) == 1 or int(o.mode) == 3: 
+    if int(o.mode) == 1 or int(o.mode) == 3:
         metadata = SDS_download.retrieve_images(inputs)
 
         # settings for the shoreline extraction
 
         SDS_preprocess.save_jpg(metadata, settings)
         # [OPTIONAL] create a reference shoreline (helps to identify outliers and false detections)
-        settings["reference_shoreline"] = SDS_preprocess.get_reference_sl(metadata, settings)
+        settings["reference_shoreline"] = SDS_preprocess.get_reference_sl(
+            metadata, settings
+        )
         # set the max distance (in meters) allowed from the reference shoreline for a detected shoreline to be valid
         settings["max_dist_ref"] = 100
 
         # extract shorelines from all images (also saves output.pkl and shorelines.kml)
         output = SDS_shoreline.extract_shorelines(metadata, settings)
-        output = SDS_tools.remove_duplicates(output) # removes duplicates (images taken on the same date by the same satellite)
+        output = SDS_tools.remove_duplicates(
+            output
+        )  # removes duplicates (images taken on the same date by the same satellite)
         output = SDS_tools.remove_inaccurate_georef(output, 10)
 
         # for GIS applications, save output into a GEOJSON layer
-        geomtype = "lines"  # choose 'points' or 'lines' for the layer geometry
+        geomtype = "points"  # choose 'points' or 'lines' for the layer geometry
         gdf = SDS_tools.output_to_gdf(output, geomtype)
-        gdf.crs = {"init": "epsg:" + str(settings["output_epsg"])}  # set layer projection
+        gdf.crs = {
+            "init": "epsg:" + str(settings["output_epsg"])
+        }  # set layer projection
         # save GEOJSON layer to file
         gdf.to_file(
             os.path.join(
@@ -134,35 +145,23 @@ if o.site != "default" and o.start != "default" and o.end != "default":
 
         plots.plot_shorelines(filepath_data, sitename, output)
 
-
     if int(o.mode) == 2 or int(o.mode) == 3:
-        
+
         # if you have already mapped the shorelines, load the output.pkl file
         filepath = os.path.join(inputs["filepath"], sitename)
         with open(os.path.join(filepath, sitename + "_output" + ".pkl"), "rb") as f:
             output = pickle.load(f)
 
-
-
         sf = shapefile.Reader(os.path.join(filepath_data, sitename, "Perfiles.shp"))
-        shapes = sf.shapes()
         transects = dict([])
 
-        for p in range (len(shapes)):
-            transects[str(p)] = np.array(shapes[p].points)
-        # perf = sio.loadmat(os.path.join(filepath_data, sitename, "coordinatesPERF.mat"))
+        i = 0
+        records = sf.records()
+        for shape in sf.shapes():
+            print(polygon)
+            transects[str(int(records[i]["ID_perfil"]))] = np.array(shape.points)
+            i = i + 1
 
-        # # option 3: create the transects by manually providing the coordinates of two points
-        # transects = dict([])
-        # rang = [0, perf["coordinatesPerf"].shape[0]]
-        # settings["along_dist"] = 25
-        # for i in range(rang[0], rang[1]):
-        #     transects[i - rang[0]] = np.array(
-        #         [
-        #             [perf["coordinatesPerf"][i, 0], perf["coordinatesPerf"][i, 1]],
-        #             [perf["coordinatesPerf"][i, 2], perf["coordinatesPerf"][i, 3]],
-        #         ]
-        #     )
         settings["along_dist"] = 25
         cross_distance = SDS_transects.compute_intersection(output, transects, settings)
 
@@ -172,16 +171,6 @@ if o.site != "default" and o.start != "default" and o.end != "default":
         for j in range(len(output["dates"])):
             b = a[j]
             time[j, :] = [b.year, b.month, b.day, b.hour, b.minute, b.second]
-
-        # # guardamos
-        # for i in range(rang[0], rang[1]):
-        #     buf = sitename + "%d.mat" % (i + 1)
-        #     buf1 = "Transect%d" % (i + 1)
-        #     buf3 = "date%d" % (i + 1)
-        #     sio.savemat(
-        #         os.path.join(filepath_data, sitename, buf),
-        #         {buf1: cross_distance[i - rang[0]], "data": time},
-        #     )
 
         plots.plot_time_series(filepath_data, sitename, output, cross_distance)
 
@@ -208,8 +197,7 @@ if o.site != "default" and o.start != "default" and o.end != "default":
         cross_distance_tidally_corrected = {}
         for key in cross_distance.keys():
             correction = (tides_sat - reference_elevation) / slope_est[key]
-            cross_distance_tidally_corrected[key] = cross_distance[key] + cor
-            rection
+            cross_distance_tidally_corrected[key] = cross_distance[key] + correction
 
         # store the tidally-corrected time-series in a .csv file
         out_dict = dict([])
@@ -231,7 +219,13 @@ if o.site != "default" and o.start != "default" and o.end != "default":
         )
 
         plots.plot_time_series_shoreline_change(
-            filepath_data, sitename, cross_distance, output, cross_distance_tidally_corrected
+            filepath_data,
+            sitename,
+            cross_distance,
+            output,
+            cross_distance_tidally_corrected,
         )
 else:
-    print("Arguments site, start date and end date are mandatory, use python processor.py -h to get help")
+    print(
+        "Arguments site, start date and end date are mandatory, use python processor.py -h to get help"
+    )

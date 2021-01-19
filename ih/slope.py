@@ -18,11 +18,13 @@ def beach_slope(filepath_data, sitename, slope=None):
         output = pickle.load(f)
 
     sf = shapefile.Reader(os.path.join(filepath_data, sitename, "Perfiles.shp"))
-    shapes = sf.shapes()
     transects = dict([])
 
-    for p in range (len(shapes)):
-        transects[str(p)] = np.array(shapes[p].points)
+    i = 0
+    records = sf.records()
+    for shape in sf.shapes():
+        transects[str(int(records[i]["ID_perfil"]))] = np.array(shape.points)
+        i = i + 1
 
     # remove S2 shorelines (the slope estimation algorithm needs only Landsat)
     if "S2" in output["satname"]:
@@ -108,7 +110,7 @@ def beach_slope(filepath_data, sitename, slope=None):
     out_dict["dates"] = output["dates"]
     out_dict["geoaccuracy"] = output["geoaccuracy"]
     out_dict["satname"] = output["satname"]
-    for key in transects.keys():
+    for key in cross_distance_f.keys():
         out_dict["Transect " + str(key)] = cross_distance_f[key]
         df = pd.DataFrame(out_dict)
         fn = os.path.join(filepath_data, sitename, "transect_time_series_filtered.csv")
@@ -121,8 +123,8 @@ def beach_slope(filepath_data, sitename, slope=None):
     days_in_year = 365.2425
     seconds_in_day = 24 * 3600
     settings_slope = {
-        "slope_min": 0.035,
-        "slope_max": 0.2,
+        "slope_min": 0.005,
+        "slope_max": 0.6,
         "delta_slope": 0.005,
         "date_range": [1950, 2050],  # range of dates over which to perform the analysis
         "n_days": 7,  # sampling period [days]
