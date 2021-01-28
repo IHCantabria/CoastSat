@@ -9,6 +9,15 @@ import scipy.io as sio
 import pickle
 import csv
 import shapefile
+from pyproj import Proj, transform
+from os import walk
+import numpy as np
+from scipy.spatial import distance
+
+def matDatenum2PYDatetime(datenumVec,unitTime = 'D'):
+    datetimeVec = pd.to_datetime(datenumVec-719529, unit=unitTime,errors='coerce')
+    datetimeNum = datenumVec-719529
+    return datetimeVec,datetimeNum
 
 def beach_slope(filepath_data, sitename, slope=None):
 
@@ -67,58 +76,6 @@ def beach_slope(filepath_data, sitename, slope=None):
         filepath_data, sitename, output["dates"], cross_distance
     )
 
-    cross_distance_f = (
-        cross_distance  # cross_distance_f es la variable cross_distance filtrada
-    )
-
-    import calendar
-
-    def getUnixTimestamp(humanTime, dateFormat="%d-%m-%Y %H:%M:%S"):
-        # unixstart = getUnixTimestamp(startdate,"%m/%d/%Y %H:%M")
-        unixTimestamp = int(
-            calendar.timegm(datetime.strptime(humanTime, dateFormat).timetuple())
-        )
-        return unixTimestamp / (3600 * 24) + 719529
-
-    fechas_costa = output["dates"]
-    fechas = np.zeros(len(fechas_costa))
-
-    for fe in range(len(fechas_costa)):
-        label = fechas_costa[fe].strftime("%d-%m-%Y %H:%M:%S")
-        fechas[fe] = getUnixTimestamp(label, dateFormat="%d-%m-%Y %H:%M:%S")
-
-    for key in cross_distance_f.keys():
-
-        window = 5 * 365
-        breaks = 0
-        yl, yc = utils.disLongCrossRunMean(
-            fechas, cross_distance_f[key], window, breaks
-        )
-
-        filtro = [
-            np.nanmean(yc) - 1.5 * np.nanstd(yc),
-            np.nanmean(yc) + 1.5 * np.nanstd(yc),
-        ]
-        pos = np.argwhere((yc <= filtro[0]) | (yc >= filtro[1]))
-        cross_distance_f[key][pos] = np.nan
-        plots.plot_shorelines_removed(filepath_data, sitename, output, pos, key )
-
-    # guardo los nuevos cortes de los transectos con las líneas de costa en un excel nuevo
-    # save a .csv file for Excel users
-
-    out_dict = dict([])
-    out_dict["dates"] = output["dates"]
-    out_dict["geoaccuracy"] = output["geoaccuracy"]
-    out_dict["satname"] = output["satname"]
-    for key in cross_distance_f.keys():
-        out_dict["Transect " + str(key)] = cross_distance_f[key]
-        df = pd.DataFrame(out_dict)
-        fn = os.path.join(filepath_data, sitename, "transect_time_series_filtered.csv")
-        df.to_csv(fn, sep=",")
-        print(
-            "Time-series of the shoreline change along the transects saved as:\n%s" % fn
-        )
-
     # slope estimation settings
     days_in_year = 365.2425
     seconds_in_day = 24 * 3600
@@ -152,48 +109,71 @@ def beach_slope(filepath_data, sitename, slope=None):
         for _ in output["dates"]
     ]
     dates_sat = [output["dates"][_] for _ in np.where(idx_dates)[0]]
-    for key in cross_distance_f.keys():
-        cross_distance_f[key] = cross_distance_f[key][idx_dates]
-
-    filepath = os.path.join(filepath_data, sitename, sitename + "_tides.csv")
-    tide_data = pd.read_csv(filepath, parse_dates=["dates"])
-    dates_ts = [_.to_pydatetime() for _ in tide_data["dates"]]
-    tides_ts = np.array(tide_data["tide"])
-
-    dates_sat = output["dates"]
-
-    # get tide levels corresponding to the time of image acquisition
-
-    tides_sat = SDS_tools.get_closest_datapoint(dates_sat, dates_ts, tides_ts)
-
-    plots.plot_water_levels(filepath_data, sitename, tide_data, dates_sat, tides_sat)
-
-    plots.plot_tide_time_series(filepath_data, sitename, dates_sat, tides_sat)
-    t = np.array([_.timestamp() for _ in dates_sat]).astype("float64")
-    delta_t = np.diff(t)
-    plots.plot_time_step_distribution(
-        filepath_data, sitename, delta_t, seconds_in_day, settings_slope
-    )
-
-    # find tidal peak frequency
-    settings_slope["freqs_max"] = SDS_slope.find_tide_peak(
-        filepath_data, sitename, dates_sat, tides_sat, settings_slope
-    )
-
+    tides = []
     slope_est = dict([])
-    with open(
-        os.path.join(filepath_data, sitename, "transects_slope.csv"), mode="w"
-    ) as csv_file:
-        writer = csv.writer(
-            csv_file, delimiter=",", quotechar='"', quoting=csv.QUOTE_MINIMAL
+    for key in cross_distance.keys():
+        cross_distance[key] = cross_distance[key][idx_dates]
+        transect = transects[key]
+        startPoint = transects[key][0]
+        endPoint = transects[key][1]
+        centroidX = startPoint[0]
+        centroidY = startPoint[1]
+        inProj = Proj(init='epsg:32628')
+        outProj = Proj(init='epsg:4326')
+        centroidXWgs84,centroidYWgs84 = transform(inProj,outProj,centroidX,centroidY)
+        _, _, filenames = next(walk(os.path.join(filepath_data, "Marea_Astronomica")))
+        minDist = 1000.0
+        tideFile = None
+        for filename in filenames:
+            y = float(filename[7:14])
+            x = float(filename[16:24])
+            dist = distance.cdist([(x,y)],[(centroidXWgs84,centroidYWgs84)])
+            if dist < minDist:
+                minDist = dist
+                tideFile = filename
+
+        filepath = os.path.join(filepath_data, "Marea_Astronomica", filename)
+        mat = sio.loadmat(filepath)
+        dates_raw = mat['time'].flatten()
+        tides_ts = mat["tide"].flatten()
+
+        time_py = matDatenum2PYDatetime(dates_raw,unitTime = 'D')[0]
+
+        dates_ts = []
+        for time in time_py:
+            dates_ts.append(datetime(time.year, time.month, time.day, time.hour, time.minute, tzinfo=pytz.utc))
+
+        dates_sat = output["dates"]
+
+        # get tide levels corresponding to the time of image acquisition
+
+        tides_sat = SDS_tools.get_closest_datapoint(dates_sat, dates_ts, tides_ts)
+
+        #plots.plot_water_levels(filepath_data, sitename, tide_data, dates_sat, tides_sat)
+
+        plots.plot_tide_time_series(filepath_data, sitename, dates_sat, tides_sat)
+        t = np.array([_.timestamp() for _ in dates_sat]).astype("float64")
+        delta_t = np.diff(t)
+        plots.plot_time_step_distribution(
+            filepath_data, sitename, delta_t, seconds_in_day, settings_slope
         )
-        writer.writerow(["transect", "slope"])
-        for key in cross_distance_f.keys():
+
+        # find tidal peak frequency
+        settings_slope["freqs_max"] = SDS_slope.find_tide_peak(
+            filepath_data, sitename, dates_sat, tides_sat, settings_slope
+        )
+        with open(
+            os.path.join(filepath_data, sitename, "transects_slope.csv"), mode="w"
+        ) as csv_file:
+            writer = csv.writer(
+                csv_file, delimiter=",", quotechar='"', quoting=csv.QUOTE_MINIMAL
+            )
+            writer.writerow(["transect", "slope"])
             # remove NaNs
-            idx_nan = np.isnan(cross_distance_f[key])
+            idx_nan = np.isnan(cross_distance[key])
             dates = [dates_sat[_] for _ in np.where(~idx_nan)[0]]
             tide = tides_sat[~idx_nan]
-            composite = cross_distance_f[key][~idx_nan]
+            composite = cross_distance[key][~idx_nan]
             # apply tidal correction
             tsall = SDS_slope.tide_correct(composite, tide, beach_slopes)
             SDS_slope.plot_spectrum_all(
@@ -204,4 +184,4 @@ def beach_slope(filepath_data, sitename, slope=None):
             )
             writer.writerow(["transect" + str(key), slope_est[key]])
             print("Beach slope at transect %s: %.3f" % (key, slope_est[key]))
-    return slope_est, tides_sat, dates_sat, cross_distance_f, output
+    return slope_est

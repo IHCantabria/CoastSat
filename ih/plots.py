@@ -73,38 +73,39 @@ def plot_time_series_shoreline_change(
     gs = gridspec.GridSpec(len(cross_distance), 1)
     gs.update(left=0.05, right=0.95, bottom=0.05, top=0.95, hspace=0.05)
     for i, key in enumerate(cross_distance.keys()):
-        if np.all(np.isnan(cross_distance[key])):
-            continue
-        ax = fig.add_subplot(gs[i, 0])
-        ax.grid(linestyle=":", color="0.5")
-        ax.set_ylim([-50, 50])
-        ax.plot(
-            output["dates"],
-            cross_distance[key] - np.nanmedian(cross_distance[key]),
-            "-o",
-            ms=6,
-            mfc="w",
-            label="raw",
-        )
-        ax.plot(
-            output["dates"],
-            cross_distance_tidally_corrected[key] - np.nanmedian(cross_distance[key]),
-            "-o",
-            ms=6,
-            mfc="w",
-            label="tidally-corrected",
-        )
-        ax.set_ylabel("distance [m]", fontsize=12)
-        ax.text(
-            0.5,
-            0.95,
-            key,
-            bbox=dict(boxstyle="square", ec="k", fc="w"),
-            ha="center",
-            va="top",
-            transform=ax.transAxes,
-            fontsize=14,
-        )
+        if key in cross_distance_tidally_corrected:
+            if np.all(np.isnan(cross_distance[key])):
+                continue
+            ax = fig.add_subplot(gs[i, 0])
+            ax.grid(linestyle=":", color="0.5")
+            ax.set_ylim([-50, 50])
+            ax.plot(
+                output["dates"],
+                cross_distance[key] - np.nanmedian(cross_distance[key]),
+                "-o",
+                ms=6,
+                mfc="w",
+                label="raw",
+            )
+            ax.plot(
+                output["dates"],
+                cross_distance_tidally_corrected[key] - np.nanmedian(cross_distance[key]),
+                "-o",
+                ms=6,
+                mfc="w",
+                label="tidally-corrected",
+            )
+            ax.set_ylabel("distance [m]", fontsize=12)
+            ax.text(
+                0.5,
+                0.95,
+                key,
+                bbox=dict(boxstyle="square", ec="k", fc="w"),
+                ha="center",
+                va="top",
+                transform=ax.transAxes,
+                fontsize=14,
+            )
     ax.legend()
     fig.savefig(
         os.path.join(filepath_data, sitename, "time_series_shoreline_change.png")
