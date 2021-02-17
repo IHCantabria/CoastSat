@@ -34,6 +34,7 @@ def beach_slope(filepath_data, sitename, slope=None):
     for shape in sf.shapes():
         transects[str(int(records[i]["ID_perfil"]))] = np.array(shape.points)
         i = i + 1
+    del records, sf
 
     # remove S2 shorelines (the slope estimation algorithm needs only Landsat)
     if "S2" in output["satname"]:
@@ -111,6 +112,7 @@ def beach_slope(filepath_data, sitename, slope=None):
     dates_sat = [output["dates"][_] for _ in np.where(idx_dates)[0]]
     tides = []
     slope_est = dict([])
+    _, _, filenames = next(walk(os.path.join(filepath_data, "Marea_Astronomica")))
     for key in cross_distance.keys():
         cross_distance[key] = cross_distance[key][idx_dates]
         transect = transects[key]
@@ -121,7 +123,6 @@ def beach_slope(filepath_data, sitename, slope=None):
         inProj = Proj(init='epsg:32628')
         outProj = Proj(init='epsg:4326')
         centroidXWgs84,centroidYWgs84 = transform(inProj,outProj,centroidX,centroidY)
-        _, _, filenames = next(walk(os.path.join(filepath_data, "Marea_Astronomica")))
         minDist = 1000.0
         tideFile = None
         for filename in filenames:
@@ -131,8 +132,8 @@ def beach_slope(filepath_data, sitename, slope=None):
             if dist < minDist:
                 minDist = dist
                 tideFile = filename
-
-        filepath = os.path.join(filepath_data, "Marea_Astronomica", filename)
+            del dist
+        filepath = os.path.join(filepath_data, "Marea_Astronomica", tideFile)
         mat = sio.loadmat(filepath)
         dates_raw = mat['time'].flatten()
         tides_ts = mat["tide"].flatten()
@@ -162,26 +163,36 @@ def beach_slope(filepath_data, sitename, slope=None):
         settings_slope["freqs_max"] = SDS_slope.find_tide_peak(
             filepath_data, sitename, dates_sat, tides_sat, settings_slope
         )
-        with open(
-            os.path.join(filepath_data, sitename, "transects_slope.csv"), mode="w"
-        ) as csv_file:
-            writer = csv.writer(
-                csv_file, delimiter=",", quotechar='"', quoting=csv.QUOTE_MINIMAL
-            )
-            writer.writerow(["transect", "slope"])
-            # remove NaNs
-            idx_nan = np.isnan(cross_distance[key])
-            dates = [dates_sat[_] for _ in np.where(~idx_nan)[0]]
-            tide = tides_sat[~idx_nan]
-            composite = cross_distance[key][~idx_nan]
-            # apply tidal correction
-            tsall = SDS_slope.tide_correct(composite, tide, beach_slopes)
+
+        # remove NaNs
+        idx_nan = np.isnan(cross_distance[key])
+        dates = [dates_sat[_] for _ in np.where(~idx_nan)[0]]
+        tide = tides_sat[~idx_nan]
+        composite = cross_distance[key][~idx_nan]
+        # apply tidal correction
+        tsall = SDS_slope.tide_correct(composite, tide, beach_slopes)
+        try:
             SDS_slope.plot_spectrum_all(
                 filepath_data, sitename, key, dates, composite, tsall, settings_slope
             )
             slope_est[key] = SDS_slope.integrate_power_spectrum(
                 filepath_data, sitename, key, dates, tsall, settings_slope
             )
-            writer.writerow(["transect" + str(key), slope_est[key]])
+                
             print("Beach slope at transect %s: %.3f" % (key, slope_est[key]))
+        except:
+            pass
+        del mat, dates_raw, tides_ts, dates_ts, tides_sat, composite, tsall, idx_nan
+    with open(
+            os.path.join(filepath_data, sitename, "transects_slope.csv"), mode="w"
+    ) as csv_file:
+        writer = csv.writer(
+            csv_file, delimiter=",", quotechar='"', quoting=csv.QUOTE_MINIMAL
+        )
+        writer.writerow(["transect", "slope"])
+        for key in cross_distance.keys():
+            try:
+                writer.writerow(["transect" + str(key), slope_est[key]])
+            except:
+                pass
     return slope_est

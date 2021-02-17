@@ -293,12 +293,10 @@ def reject_outliers(cross_distance, output, settings):
         if sum(np.isnan(chainage)) == len(chainage):
             continue
 
-        # 1. remove nans and negative chainages
         idx_nonan = np.where(~np.isnan(chainage))[0]
         chainage1 = [chainage[k] for k in idx_nonan]
         dates1 = [output["dates"][k] for k in idx_nonan]
 
-        # 3. remove outliers based on despiking [iterative method]
         chainage3, dates3 = identify_outliers(
             chainage1, dates1, settings["max_cross_change"]
         )

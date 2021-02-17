@@ -176,34 +176,6 @@ if o.site != "default" and o.start != "default" and o.end != "default":
         settings["along_dist"] = 25
         cross_distance = SDS_transects.compute_intersection(output, transects, settings)
 
-        # pasamos las fechas a un vector con año, mes, dia, hora, minuto y segundo
-        time = np.zeros((len(output["dates"]), 6))
-        a = output["dates"]
-        for j in range(len(output["dates"])):
-            b = a[j]
-            time[j, :] = [b.year, b.month, b.day, b.hour, b.minute, b.second]
-
-        plots.plot_time_series(filepath_data, sitename, output, cross_distance)
-
-        reference_elevation = (
-            0  # elevation at which you would like the shoreline time-series to be
-        )
-        if slope_value == None:
-            slope_est = slope.beach_slope(
-                filepath_data, sitename
-            )
-        else:
-            plots.plot_shorelines_transects(filepath_data, sitename, output, transects)
-            slope_est = dict([])
-            filepath = os.path.join(filepath_data, sitename, sitename + "_tides.csv")
-            tide_data = pd.read_csv(filepath, parse_dates=["dates"])
-            dates_ts = [_.to_pydatetime() for _ in tide_data["dates"]]
-            tides_ts = np.array(tide_data["tide"])
-            dates_sat = output["dates"]
-            tides_sat = SDS_tools.get_closest_datapoint(dates_sat, dates_ts, tides_ts)
-            for key in cross_distance.keys():
-                slope_est[key] = slope_value
-
         cross_distance_f = cross_distance
         import calendar
 
@@ -250,12 +222,38 @@ if o.site != "default" and o.start != "default" and o.end != "default":
                 df = pd.DataFrame(out_dict)
                 fn = os.path.join(filepath_data, sitename, "transect_time_series_filtered.csv")
                 df.to_csv(fn, sep=",")
-                print(
-                    "Time-series of the shoreline change along the transects saved as:\n%s" % fn
-                )
-    
+        print("Time-series of the shoreline change along the transects saved as:\n%s" % fn)
 
+        # pasamos las fechas a un vector con año, mes, dia, hora, minuto y segundo
+        time = np.zeros((len(output["dates"]), 6))
+        a = output["dates"]
+        for j in range(len(output["dates"])):
+            b = a[j]
+            time[j, :] = [b.year, b.month, b.day, b.hour, b.minute, b.second]
+
+        plots.plot_time_series(filepath_data, sitename, output, cross_distance)
+
+        reference_elevation = (
+            0  # elevation at which you would like the shoreline time-series to be
+        )
+        if slope_value == None:
+            slope_est = slope.beach_slope(
+                filepath_data, sitename
+            )
+        else:
+            plots.plot_shorelines_transects(filepath_data, sitename, output, transects)
+            slope_est = dict([])
+            filepath = os.path.join(filepath_data, sitename, sitename + "_tides.csv")
+            tide_data = pd.read_csv(filepath, parse_dates=["dates"])
+            dates_ts = [_.to_pydatetime() for _ in tide_data["dates"]]
+            tides_ts = np.array(tide_data["tide"])
+            dates_sat = output["dates"]
+            tides_sat = SDS_tools.get_closest_datapoint(dates_sat, dates_ts, tides_ts)
+            for key in cross_distance.keys():
+                slope_est[key] = slope_value
+    
         cross_distance_tidally_corrected = {}
+        _, _, filenames = next(walk(os.path.join(filepath_data, "Marea_Astronomica")))
         for key in cross_distance_f.keys():
             if key in slope_est:
                 transect = transects[key]
@@ -266,7 +264,6 @@ if o.site != "default" and o.start != "default" and o.end != "default":
                 inProj = Proj(init='epsg:32628')
                 outProj = Proj(init='epsg:4326')
                 centroidXWgs84,centroidYWgs84 = transform(inProj,outProj,centroidX,centroidY)
-                _, _, filenames = next(walk(os.path.join(filepath_data, "Marea_Astronomica")))
                 minDist = 1000.0
                 tideFile = None
                 for filename in filenames:
@@ -277,7 +274,7 @@ if o.site != "default" and o.start != "default" and o.end != "default":
                         minDist = dist
                         tideFile = filename
 
-                filepath = os.path.join(filepath_data, "Marea_Astronomica", filename)
+                filepath = os.path.join(filepath_data, "Marea_Astronomica", tideFile)
                 mat = sio.loadmat(filepath)
                 dates_raw = mat['time'].flatten()
                 tides_ts = mat["tide"].flatten()
@@ -296,6 +293,7 @@ if o.site != "default" and o.start != "default" and o.end != "default":
 
                 correction = (tides_sat - reference_elevation) / slope_est[key]
                 cross_distance_tidally_corrected[key] = cross_distance_f[key] + correction
+                del mat, dates_raw, tides_ts, dates_ts, tides_sat
 
         # store the tidally-corrected time-series in a .csv file
         out_dict = dict([])
@@ -303,7 +301,10 @@ if o.site != "default" and o.start != "default" and o.end != "default":
         out_dict["geoaccuracy"] = output["geoaccuracy"]
         out_dict["satname"] = output["satname"]
         for key in cross_distance_tidally_corrected.keys():
-            out_dict["Transect " + str(key)] = cross_distance_tidally_corrected[key]
+            try:
+                out_dict["Transect " + str(key)] = cross_distance_tidally_corrected[key]
+            except:
+                pass
         df = pd.DataFrame(out_dict)
         fn = os.path.join(
             settings["inputs"]["filepath"],
