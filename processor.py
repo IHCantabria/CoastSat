@@ -176,6 +176,8 @@ if o.site != "default" and o.start != "default" and o.end != "default":
         settings["along_dist"] = 25
         cross_distance = SDS_transects.compute_intersection(output, transects, settings)
 
+        print(cross_distance)
+
         cross_distance_f = cross_distance
         import calendar
 
